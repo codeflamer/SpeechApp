@@ -1,0 +1,28 @@
+# Secrets
+.env
+.env.*
+!.env.example
+
+# Node
+node_modules/
+.next/
+out/
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+.pytest_cache/
+.ruff_cache/
+*.egg-info/
+
+# Audio fixtures and spike output (may contain real voices: never commit)
+scoring/spike/clips/
+scoring/spike/results/
+
+# Local Claude settings
+.claude/settings.local.json
+
+# OS
+.DS_Store
+Thumbs.db

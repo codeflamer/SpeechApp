@@ -18,6 +18,8 @@ import os
 import subprocess
 import sys
 import tempfile
+import urllib.error
+import urllib.request
 from dataclasses import asdict, dataclass, field
 from pathlib import Path
 
@@ -59,7 +61,8 @@ class LocaleSummary:
     phoneme_coverage: float = 0.0  # share of words that came back with phoneme detail
     phoneme_name_rate: float = 0.0  # share of phonemes with a label (not just a score)
     phoneme_timing_rate: float = 0.0  # share of phonemes with offset + duration
-    formant_success_rate: float = 0.0  # share of vowels where F1 and F2 were measurable
+    # Share of vowels where F1 and F2 were measurable; None when no vowels could be identified.
+    formant_success_rate: float | None = None
     results: list[ClipResult] = field(default_factory=list)
 
 
@@ -87,9 +90,32 @@ def assess(wav: Path, reference_text: str, locale: str) -> dict:
     )
     pa_config.apply_to(recognizer)
     result = recognizer.recognize_once()
+    if result.reason == speechsdk.ResultReason.Canceled:
+        # Canceled alone is opaque; the details carry the real cause (auth, region, audio format).
+        details = result.cancellation_details
+        raise RuntimeError(
+            f"canceled: {details.reason} {details.code}: {details.error_details or '(no details)'}"
+        )
     if result.reason != speechsdk.ResultReason.RecognizedSpeech:
         raise RuntimeError(f"recognition failed: {result.reason}")
     return json.loads(result.properties[speechsdk.PropertyId.SpeechServiceResponse_JsonResult])
+
+
+def check_credentials() -> str | None:
+    """Return an error message if Azure rejects the key/region, else None."""
+    region = os.environ.get("AZURE_SPEECH_REGION", "")
+    req = urllib.request.Request(
+        f"https://{region}.api.cognitive.microsoft.com/sts/v1.0/issueToken",
+        method="POST",
+        headers={"Ocp-Apim-Subscription-Key": os.environ.get("AZURE_SPEECH_KEY", "")},
+    )
+    try:
+        urllib.request.urlopen(req, timeout=15)
+    except urllib.error.HTTPError as e:
+        return f"Azure rejected the key for region '{region}' (HTTP {e.code})"
+    except urllib.error.URLError as e:
+        return f"could not reach Azure region '{region}': {e.reason}"
+    return None
 
 
 def formants_ok(formant: parselmouth.Formant, start_s: float, dur_s: float) -> bool:
@@ -139,6 +165,7 @@ def summarize(locale: str, results: list[ClipResult]) -> LocaleSummary:
         return num / den if den else 0.0
 
     ok = [r for r in results if r.error is None]
+    vowels = sum(r.vowels_measured for r in ok)
     return LocaleSummary(
         locale=locale,
         clips=len(results),
@@ -146,9 +173,7 @@ def summarize(locale: str, results: list[ClipResult]) -> LocaleSummary:
         phoneme_coverage=rate(sum(r.words_with_phonemes for r in ok), sum(r.word_count for r in ok)),
         phoneme_name_rate=rate(sum(r.phonemes_named for r in ok), sum(r.phonemes_total for r in ok)),
         phoneme_timing_rate=rate(sum(r.phonemes_timed for r in ok), sum(r.phonemes_total for r in ok)),
-        formant_success_rate=rate(
-            sum(r.vowels_with_formants for r in ok), sum(r.vowels_measured for r in ok)
-        ),
+        formant_success_rate=rate(sum(r.vowels_with_formants for r in ok), vowels) if vowels else None,
         results=results,
     )
 
@@ -172,7 +197,7 @@ def evaluate_locale(s: LocaleSummary) -> tuple[str, str]:
         return "reject", f"only {s.phoneme_timing_rate:.0%} of phonemes have timings"
 
     mic_note = ""
-    if s.formant_success_rate < 0.8:
+    if s.formant_success_rate is not None and s.formant_success_rate < 0.8:
         mic_note = f"; mic warning: formants measurable on only {s.formant_success_rate:.0%} of vowels"
 
     if s.phoneme_coverage >= 0.9 and s.phoneme_name_rate >= 0.9:
@@ -182,6 +207,9 @@ def evaluate_locale(s: LocaleSummary) -> tuple[str, str]:
 
 def main() -> int:
     load_dotenv(SPIKE_DIR.parent / ".env")
+    if problem := check_credentials():
+        print(f"{problem}. Check the key and region in scoring/.env (see spike/README.md).")
+        return 1
     manifest = CLIPS_DIR / "manifest.csv"
     if not manifest.exists():
         print(f"Missing {manifest}. See spike/README.md.")
@@ -206,11 +234,12 @@ def main() -> int:
     )
     for s in summaries:
         verdict, reason = evaluate_locale(s)
+        formants = "n/a" if s.formant_success_rate is None else f"{s.formant_success_rate:.0%}"
         print(
             f"{s.locale}: {verdict.upper()} ({reason})\n"
             f"  clips={s.clips} failed={s.clips_failed} phoneme_coverage={s.phoneme_coverage:.0%} "
             f"named={s.phoneme_name_rate:.0%} timed={s.phoneme_timing_rate:.0%} "
-            f"formants={s.formant_success_rate:.0%}"
+            f"formants={formants}"
         )
     return 0
 

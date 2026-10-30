@@ -16,8 +16,26 @@ This spike answers SPEC §13.1 (does `en-CA` return phoneme-level data?) and §1
 
 `clips/` and `results/` are git-ignored because they contain real voices. Get each speaker's consent before recording.
 
+## Troubleshooting: "Azure rejected the key (HTTP 401)"
+- In the Azure portal, open the resource and go to **Keys and Endpoint**. Copy **KEY 1** and the **Location/Region** shown there, written lowercase with no spaces, e.g. `canadacentral`.
+- The resource must be **Speech** or **Azure AI services (multi-service)**. Keys from Azure OpenAI, a Foundry *project*, or a different service won't work.
+- If **local authentication is disabled** on the resource, keys are refused. Turn key access on, or use a new Speech resource.
+- A newly created or regenerated key can take a few minutes to start working.
+
 ## Run
 ```bash
 .venv/Scripts/python spike/azure_spike.py
 ```
 The output is a verdict per locale, plus `spike/results/report.json` with per-clip detail.
+
+## Sensitivity spike: does Azure en-US notice the patterns we teach?
+```bash
+.venv/Scripts/python spike/sensitivity_spike.py
+```
+Two en-US TTS voices say each test word normally and then with a typical Nigerian/Ghanaian sound forced through SSML (e.g. *think* as /tɪŋk/). The script reports how much Azure's score for that sound drops. Before trusting a "miss", check that the TTS actually changed the sound: it sometimes ignores the override. Results are in SPEC §13.1.
+
+## TTS spike: are the en-CA voices Canadian?
+```bash
+.venv/Scripts/python spike/tts_spike.py
+```
+For every en-CA voice it measures Canadian raising (*ice/eyes*, *write/ride*…) and the low-back merger (*cot/caught*…). It also saves place-name clips to `spike/results/tts/<voice>/` so a human can listen to them.

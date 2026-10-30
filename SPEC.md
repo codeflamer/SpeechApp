@@ -114,11 +114,21 @@ Known risk: commercial scorers under-score African-accented speakers. To counter
 
 ## 8. Technical architecture
 - **Frontend:** Next.js (App Router, TypeScript) PWA, with installable manifest. Audio uses MediaRecorder (Opus), with an explicit permission flow and Safari fallbacks (`audio/mp4`). Styling is Tailwind, and the UI must be accessible (WCAG AA, captions or text for all audio prompts).
-- **Backend API:** Next.js route handlers or a small Node BFF for auth and session data, plus a **Python FastAPI scoring service** (Azure Speech SDK, numpy and ffmpeg; Parselmouth comes in Phase 6).
-- **Data:** Postgres (users, consents, attempts, scores, mastery, SRS state, content). Recordings and TTS cache live in S3-compatible object storage.
-- **Hosting:** Canadian region (ca-central) for data residency. The production Azure Speech resource is created in **Canada Central**; the `en-US` locale works from any region.
-- **Auth:** Auth.js with Google and email magic link.
-- **TTS:** two Azure Neural TTS `en-US` voices, one female and one male, picked in Phase 0. The learner chooses which; responses are cached by text hash.
+- **Backend API:** Next.js route handlers for app and session data, plus a **Python FastAPI scoring service** (Azure Speech SDK, numpy and ffmpeg; Parselmouth comes in Phase 6). The web app calls the scoring service server-to-server, with a shared token (`SCORING_SERVICE_TOKEN`).
+- **Data:** **Supabase** Postgres 17 holds users, consents, attempts, scores, mastery, SRS state and content, with row-level security so users only see their own rows. Recordings and the TTS cache live in **Supabase Storage**, which is S3-compatible, in private buckets with a 5 MiB file limit.
+  - **Upload path:** the browser uploads a recording straight to Storage through a signed upload URL, so audio never passes through Vercel. The scoring service then reads it from Storage.
+- **Hosting (decided 2026-10-29): Vercel + Supabase, all in Canada.**
+  - **Web:** Vercel with functions pinned to **Montréal (`yul1`)** in `web/vercel.json`. Vercel's default is `iad1` (Virginia).
+  - **Database and storage:** Supabase project in **Canada (Central), `ca-central-1`**.
+  - **Scoring service:** Azure Container Apps in **Canada Central**, next to the Azure Speech resource, which must also be in Canada Central. The `en-US` locale works from any region.
+  - **Local development:** the Supabase CLI (pinned in the root `package.json`) runs Postgres, Storage and Auth in Docker.
+  - **Environments:** local (Supabase CLI), staging and production. Staging and production each get their own Supabase project, Vercel environment and Container App.
+- **Auth:** **Supabase Auth** with Google and email magic link. This replaces Auth.js: it's one provider fewer, and the user ids feed row-level security directly.
+- **TTS:** two Azure Neural TTS `en-US` voices: **`en-US-AvaNeural`** (female) and **`en-US-AndrewNeural`** (male), chosen by listen test on 2026-10-29. The learner chooses which; responses are cached by text hash.
+  - Use **standard neural voices only**. HD/Dragon/MAI voices cost more and aren't in every region; multilingual voices can drift in accent.
+  - *Voice check (2026-10-29, `scoring/spike/voice_pick_spike.py`):* 27 voices scored 93–98 on our 4 module sounds, so clarity barely separates them.
+    - Shortlist: Ava, Nancy, Jane (female) and Andrew, Roger, Kai (male). Ava and Andrew were picked by listening.
+    - Every voice speaks at 3.3–4.4 words/s, faster than a learner-friendly ~2.6. Reference audio is rendered with SSML `<prosody rate="-15%">`, plus the 0.75× playback option.
 - **LLM:** Claude (latest Sonnet-class model) for tips, with strict JSON output and a template-constrained prompt.
 - **Jobs:** a queue for TTS generation, account deletion and nightly aggregation.
 
@@ -139,6 +149,11 @@ Known risk: commercial scorers under-score African-accented speakers. To counter
 ## 10. Edge cases
 - **Mic denied or unavailable:** listening drills are still usable, with an explainer on how to enable the mic.
 - **iOS Safari:** the MediaRecorder MIME type differs. The browser may suspend the AudioContext, so recording must start from a user gesture.
+- **Browser recording formats** (Phase 0, `scoring/spike/format_spike.py` and `web/src/app/spike/recorder`):
+  - The client picks the first supported type, in this order: `audio/webm;codecs=opus`, `audio/ogg;codecs=opus`, `audio/mp4`.
+  - Chrome's WebM has **no duration in its header**, and Chromium records **48 kHz stereo**. Safari's MP4 is fragmented.
+  - ffmpeg converts all three to 16 kHz mono correctly. So the server **always measures duration and checks length on the decoded WAV, never from the upload's header**, and always downmixes to mono.
+  - Real-device Safari/iOS still needs checking. Phones only allow the mic over HTTPS, so do this on staging.
 - **Bluetooth headsets:** the low-quality HFP profile trips the SNR gate. The app suggests using the phone mic.
 - **The learner reads the wrong sentence, code-switches into Pidgin, or laughs or coughs:** the attempt goes through the WER gate and abstains.
 - **Learners who already produce North American features:** the diagnostic marks the pattern as mastered and skips it.

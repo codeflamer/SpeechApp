@@ -9,12 +9,16 @@ Maple (working name): a free PWA that helps Nigerian and Ghanaian English speake
 - Rhotic R scores only r-coloured vowels (*bird, worker*). Never score a syllable-final r (*car*): Azure misses it (SPEC §4, §13.1).
 
 ## Planned layout
-- `web/`: Next.js (App Router, TypeScript, Tailwind) PWA, Auth.js, and the recording UI
+- `web/`: Next.js (App Router, TypeScript, Tailwind) PWA, Supabase Auth, and the recording UI. Deployed on Vercel, with functions pinned to `yul1` (Montréal) in `web/vercel.json`
 - `scoring/`: Python FastAPI service (Azure Speech SDK `en-US`, numpy, ffmpeg; Parselmouth only in Phase 6)
 - `scoring/spike/`: Phase 0 experiments. Their Canadian findings are recorded in SPEC §14.
-- Postgres, plus S3-compatible storage for recordings and the TTS cache, hosted in ca-central only
+- `supabase/`: Supabase config and (from Phase 1) SQL migrations. Hosted in `ca-central-1` only. Every user table has row-level security
+- Recordings upload from the browser straight to Supabase Storage through signed URLs. Never route audio through Vercel functions
+- The scoring service runs on Azure Container Apps in Canada Central
 
 ## Commands
+- Local Supabase (repo root, needs Docker Desktop running): `npm run db:start`, `db:status` (prints local keys), `db:stop`, `db:reset`
+- Copy `web/.env.example` → `web/.env.local` and `scoring/.env.example` → `scoring/.env`
 - Web (`web/`): `npm run dev`, `npm run build`, `npm run lint`
 - Scoring (`scoring/`), using the venv at `scoring/.venv`:
   - Install: `.venv/Scripts/python -m pip install -e ".[dev]"`

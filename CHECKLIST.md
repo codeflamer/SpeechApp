@@ -17,17 +17,32 @@ Goal: retire the biggest technical unknowns before building anything on them.
 - [x] Formant measurement on those clips (kept for the Canadian iteration, SPEC §14)
 - [x] en-CA TTS check: raising and merger measured (`spike/tts_spike.py`); results recorded for the Canadian iteration (SPEC §14)
 - [x] **Azure `en-US` sensitivity** (`spike/sensitivity_spike.py`, SPEC §13.1): reliable for TH, *ship/sheep* and r-coloured vowels; partly reliable for schwa; misses *full/fool*, *cat/cut*, flapped t and a dropped r at the end of a syllable → MVP cut to 4 modules
-- [ ] en-US TTS: pick 1 female and 1 male voice; listen-test sentences and Canadian place names (SPEC §8, §10)
-- [ ] MediaRecorder: confirm the format each browser records in (Chrome/Android Opus, iOS Safari `audio/mp4`) and that the server can convert it (SPEC §10)
+- [x] en-US TTS: pick 1 female and 1 male voice; listen-test sentences and Canadian place names (SPEC §8, §10)
+  - [x] Scored 27 standard voices for clarity and pace (`spike/voice_pick_spike.py`); shortlist Ava, Nancy, Jane / Andrew, Roger, Kai
+  - [x] Listen test: picked **Ava** (F) and **Andrew** (M); no place names reported as wrong yet. Revisit in the Phase 3 content review
+- [x] MediaRecorder: confirm the format each browser records in (Chrome/Android Opus, iOS Safari `audio/mp4`) and that the server can convert it (SPEC §10)
+  - [x] Server converts Chrome-style WebM (no duration header), Firefox Ogg and Safari-style fragmented MP4 to 16 kHz mono (`spike/format_spike.py`)
+  - [x] Real Chromium recording: WebM/Opus, 48 kHz stereo, no duration header → converted correctly (test page `web/src/app/spike/recorder`)
+  - [x] Real desktop browser with a real mic: several recordings uploaded and converted (all 200 OK)
+  - Deferred: real iPhone Safari and Android Chrome recording. It needs HTTPS and is covered by Phase 5 cross-browser QA
 - [x] Write up the spike results and adjust the scoring design if needed
 
 ### Project setup
 - [x] Monorepo: `web/` (Next.js App Router, TypeScript, Tailwind) and `scoring/` (FastAPI, Python)
-- [ ] Postgres and S3-compatible storage, hosted in ca-central (SPEC §8)
-- [ ] Production Azure Speech resource in Canada Central (the spike used East US 2)
-- [ ] Lint, format and test tooling in CI for both apps
-- [ ] Secrets management for the Azure, LLM and auth keys
-- [ ] Environments: local, staging, prod
+- [x] Hosting decided: Vercel (`yul1` Montréal) + Supabase (`ca-central-1`) + Azure Container Apps (Canada Central) for scoring (SPEC §8)
+- [~] Postgres and storage via Supabase (SPEC §8)
+  - [x] Local: `supabase/config.toml` (Postgres 17, 5 MiB file limit); CLI pinned in the root `package.json`
+  - [ ] Start the local stack (`npm run db:start`); needs Docker Desktop running
+  - [ ] Hosted Supabase projects for staging and prod in Canada (Central) *(you: needs your Supabase account)*
+- [ ] Production Azure Speech resource in Canada Central; the spike used East US 2 *(you: Azure portal)*
+- [x] CI: GitHub Actions runs web lint, type check and build, plus scoring ruff and pytest (`.github/workflows/ci.yml`)
+- [~] Secrets management
+  - [x] `.env.example` templates for `web/` and `scoring/`; real `.env` files are git-ignored
+  - [ ] Hosted secrets in Vercel env vars, GitHub Actions secrets and Container Apps secrets, per environment
+- [~] Environments: local, staging, prod
+  - [x] Local defined (Supabase CLI and `.claude/launch.json`)
+  - [ ] Staging and prod: Vercel project linked to the GitHub repo *(you: needs your Vercel account)*
+- [x] Security: upgraded to patched Next.js 15.5.28 and React 19.1.10 (CVE-2025-66478)
 
 **Exit gate:** Azure `en-US` catches the target patterns, or SPEC.md has been revised (custom check or module cut) for any it misses. ✅ Met: SPEC revised to 4 modules.
 
@@ -36,7 +51,9 @@ Goal: retire the biggest technical unknowns before building anything on them.
 ## Phase 1: Foundations (Weeks 1–2)
 
 ### Auth and consent (SPEC §5.1, §9)
-- [ ] Auth.js with Google and email magic link; an account is required before any app use
+- [ ] Supabase Auth with Google and email magic link; an account is required before any app use
+- [ ] Row-level security on every user table, so users only read their own rows
+- [ ] Private Storage bucket for recordings; upload through signed upload URLs
 - [ ] `Consent` table that is versioned and records when each consent was granted and revoked
 - [ ] Required consent screen for recording storage
 - [ ] Optional training-use consent, off by default and revocable in settings
@@ -57,7 +74,7 @@ Goal: retire the biggest technical unknowns before building anything on them.
 - [ ] Recorder component: tap-to-start/stop, auto-stop after 1.5 s of silence, 15 s max, starts from a user gesture
 - [ ] Mic permission flow, plus fallback when the mic is denied (listening-only mode) (SPEC §10)
 - [ ] `POST /attempts` with an idempotency key; upload to object storage (SPEC §10)
-- [ ] Server-side conversion to 16 kHz mono WAV
+- [ ] Server-side conversion to 16 kHz mono WAV; measure duration on the decoded WAV, never the upload header (SPEC §10)
 - [ ] Quality gate: voice activity detection, signal-to-noise estimate, clipping and duration checks, each with a specific abstain reason
 - [ ] Hint for Bluetooth headsets when the signal-to-noise check fails (SPEC §10)
 
@@ -177,8 +194,9 @@ Goal: retire the biggest technical unknowns before building anything on them.
 
 ### Quality
 - [ ] Accessibility pass to WCAG AA, with text alternatives for all audio prompts
-- [ ] Cross-browser QA (iOS Safari, Android Chrome, desktop Chrome, Firefox, Edge)
+- [ ] Cross-browser QA (iOS Safari, Android Chrome, desktop Chrome, Firefox, Edge), including real-phone recording and upload (deferred from Phase 0; use `/spike/recorder` on staging)
 - [ ] PWA manifest and install flow
+- [ ] Upgrade to Next.js 16. `npm audit` flags the PostCSS bundled in Next 15 (build-time only, low real risk), and it's only fixable in 16
 - [ ] Load test the scoring service
 
 ### Analytics (SPEC §11)

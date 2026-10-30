@@ -34,6 +34,20 @@ The output is a verdict per locale, plus `spike/results/report.json` with per-cl
 ```
 Two en-US TTS voices say each test word normally and then with a typical Nigerian/Ghanaian sound forced through SSML (e.g. *think* as /tɪŋk/). The script reports how much Azure's score for that sound drops. Before trusting a "miss", check that the TTS actually changed the sound: it sometimes ignores the override. Results are in SPEC §13.1.
 
+## Voice-pick spike: which en-US voices should learners copy?
+```bash
+.venv/Scripts/python spike/voice_pick_spike.py
+```
+The script scores standard en-US neural voices on our 4 module sounds and measures their speaking pace. It then saves the module sentences and Canadian place names for the top voices to `spike/results/voices/`. Compare them side by side in `spike/results/listen.html`.
+
+## Browser recording formats
+```bash
+.venv/Scripts/python spike/format_spike.py
+```
+This imitates each browser's MediaRecorder file (Chrome WebM with no duration, Firefox Ogg, Safari fragmented MP4) and checks the conversion to 16 kHz mono.
+
+To test a real browser, start the `recorder-spike` and `web` servers from `.claude/launch.json`, then open http://localhost:3000/spike/recorder. **Record** uses the mic; **Record 3 s test tone** works without one.
+
 ## TTS spike: are the en-CA voices Canadian?
 ```bash
 .venv/Scripts/python spike/tts_spike.py

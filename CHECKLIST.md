@@ -32,10 +32,10 @@ Goal: retire the biggest technical unknowns before building anything on them.
 - [x] Hosting decided: Vercel (`yul1` Montréal) + Supabase (`ca-central-1`) + Azure Container Apps (Canada Central) for scoring (SPEC §8)
 - [~] Postgres and storage via Supabase (SPEC §8)
   - [x] Local: `supabase/config.toml` (Postgres 17, 5 MiB file limit); CLI pinned in the root `package.json`
-  - [ ] Start the local stack (`npm run db:start`); needs Docker Desktop running
+  - [x] Local stack running (`npm run db:start`): Postgres 17.11, Auth, Storage, REST and Studio all respond; `web/.env.local` filled with the local keys
   - [ ] Hosted Supabase projects for staging and prod in Canada (Central) *(you: needs your Supabase account)*
 - [ ] Production Azure Speech resource in Canada Central; the spike used East US 2 *(you: Azure portal)*
-- [x] CI: GitHub Actions runs web lint, type check and build, plus scoring ruff and pytest (`.github/workflows/ci.yml`)
+- [x] CI: GitHub Actions runs web lint, type check and build, plus scoring ruff and pytest (`.github/workflows/ci.yml`). The first run failed at the scoring install (setuptools found both `app` and `spike`); fixed in `pyproject.toml`
 - [~] Secrets management
   - [x] `.env.example` templates for `web/` and `scoring/`; real `.env` files are git-ignored
   - [ ] Hosted secrets in Vercel env vars, GitHub Actions secrets and Container Apps secrets, per environment

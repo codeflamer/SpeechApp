@@ -17,7 +17,7 @@ Maple (working name): a free PWA that helps Nigerian and Ghanaian English speake
 - The scoring service runs on Azure Container Apps in Canada Central
 
 ## Commands
-- Local Supabase (repo root, needs Docker Desktop running): `npm run db:start`, `db:status` (prints local keys), `db:stop`, `db:reset`
+- Local Supabase (repo root, needs Docker Desktop running): `npm run db:start`, `db:status` (prints local keys), `db:stop`, `db:reset`. Studio (database UI): http://127.0.0.1:54323
 - Copy `web/.env.example` → `web/.env.local` and `scoring/.env.example` → `scoring/.env`
 - Web (`web/`): `npm run dev`, `npm run build`, `npm run lint`
 - Scoring (`scoring/`), using the venv at `scoring/.venv`:

@@ -26,3 +26,6 @@ scoring/spike/results/
 # OS
 .DS_Store
 Thumbs.db
+
+# Supabase Studio saved queries (personal scratch)
+supabase/snippets/

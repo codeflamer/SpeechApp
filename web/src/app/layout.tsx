@@ -14,7 +14,7 @@ const geistMono = Geist_Mono({
 
 export const metadata: Metadata = {
   title: "Maple",
-  description: "Add a Canadian accent to your toolkit.",
+  description: "Add a North American English accent to your toolkit.",
 };
 
 export default function RootLayout({

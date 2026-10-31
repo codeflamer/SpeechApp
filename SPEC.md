@@ -123,7 +123,7 @@ Known risk: commercial scorers under-score African-accented speakers. To counter
   - **Scoring service:** Azure Container Apps in **Canada Central**, next to the Azure Speech resource, which must also be in Canada Central. The `en-US` locale works from any region.
   - **Local development:** the Supabase CLI (pinned in the root `package.json`) runs Postgres, Storage and Auth in Docker.
   - **Environments:** local (Supabase CLI), staging and production. Staging and production each get their own Supabase project, Vercel environment and Container App.
-- **Auth:** **Supabase Auth** with Google and email magic link. This replaces Auth.js: it's one provider fewer, and the user ids feed row-level security directly.
+- **Auth:** **Supabase Auth** with Google and email magic link. The email links to `/auth/confirm` with a one-time `token_hash`, which the server verifies. Unlike the default flow, this works when the learner opens the email in a different browser or device (e.g. requested on a laptop, tapped on a phone). This replaces Auth.js: it's one provider fewer, and the user ids feed row-level security directly.
 - **TTS:** two Azure Neural TTS `en-US` voices: **`en-US-AvaNeural`** (female) and **`en-US-AndrewNeural`** (male), chosen by listen test on 2026-10-29. The learner chooses which; responses are cached by text hash.
   - Use **standard neural voices only**. HD/Dragon/MAI voices cost more and aren't in every region; multilingual voices can drift in accent.
   - *Voice check (2026-10-29, `scoring/spike/voice_pick_spike.py`):* 27 voices scored 93–98 on our 4 module sounds, so clarity barely separates them.
@@ -169,6 +169,8 @@ Known risk: commercial scorers under-score African-accented speakers. To counter
 - **Beta validation:** a closed beta with about 50 Nigerian and Ghanaian learners. Tune thresholds from the "seems wrong" reports and from spot-checks by a North American English rater on flagged attempts.
 
 ## 12. MVP scope (~8–9 weeks)
+> **Build order (decided 2026-10-31):** the work is built as **vertical slices** on [KANBAN.md](KANBAN.md), one card at a time, each going end to end. The week breakdown below is only a rough size estimate; it is not the order of work.
+
 - **Weeks 1–2:** finish Phase 0 checks, recording pipeline, quality gate, auth and consent, data model.
 - **Weeks 3–4:** Azure en-US integration, pattern mapping, labels and abstain logic, and the diagnostic flow.
 - **Weeks 5–6:** 4 modules of content (about 30 minimal pairs and 25 sentences per module across the 3 domains), listening drills, read-aloud UI, feedback panel, static articulation SVGs and LLM tips.

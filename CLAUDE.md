@@ -1,10 +1,13 @@
 # CLAUDE.md
 
-Maple (working name): a free PWA that helps Nigerian and Ghanaian English speakers who are moving to Canada add a **North American English** accent. The MVP has 4 modules scored with Azure `en-US`. Anything needing custom acoustic measurement, including Canada-only features, comes later in Phase 6 (SPEC §14). [SPEC.md](SPEC.md) is the source of truth for behaviour, and [CHECKLIST.md](CHECKLIST.md) tracks build progress.
+Maple (working name): a free PWA that helps Nigerian and Ghanaian English speakers who are moving to Canada add a **North American English** accent. The MVP has 4 modules scored with Azure `en-US`. Anything needing custom acoustic measurement, including Canada-only features, comes later in Phase 6 (SPEC §14). [SPEC.md](SPEC.md) is the source of truth for behaviour. **[KANBAN.md](KANBAN.md) tracks all work from Phase 1 onward**, and [CHECKLIST.md](CHECKLIST.md) records Phase 0.
 
-## Working on this repo
-- Read the relevant SPEC.md section before implementing a feature. If the code must deviate from it, update SPEC.md in the same change.
-- When a checklist item is done, tick it in CHECKLIST.md. Respect each phase's exit gate and don't skip ahead.
+## Working on this repo: vertical slices on the kanban board
+- **Always use the `kanban` skill** (`.claude/skills/kanban/SKILL.md`) when starting, continuing or finishing a feature, picking the "next item", or adding a request to the board.
+- Build **one vertical slice at a time**: a card cuts through DB → scoring → server → UI → tests and ends in a demo a learner could do. **Never build a whole layer ahead of the features that use it** (no "all tables first", no "finish scoring, then UI").
+- **WIP limit 1:** finish the card in progress (its Definition of Done in KANBAN.md) before pulling the next card from the top of Ready. Split oversized cards vertically, never by layer.
+- New features and bugs become cards on the board (the template is in the skill) before they're built.
+- Read the SPEC.md sections a card cites before implementing it. If the code must deviate from SPEC, update SPEC.md in the same change.
 - Don't build Phase 6 work early: custom vowel or timing measurement, Lobanov calibration, and the *full/fool*, *cat/cut*, flapped t, low-back merger and Canadian raising modules. Content must never target Canada-only words such as *about* or *caught*.
 - Rhotic R scores only r-coloured vowels (*bird, worker*). Never score a syllable-final r (*car*): Azure misses it (SPEC §4, §13.1).
 
@@ -19,7 +22,8 @@ Maple (working name): a free PWA that helps Nigerian and Ghanaian English speake
 ## Commands
 - Local Supabase (repo root, needs Docker Desktop running): `npm run db:start`, `db:status` (prints local keys), `db:stop`, `db:reset`. Studio (database UI): http://127.0.0.1:54323
 - Copy `web/.env.example` → `web/.env.local` and `scoring/.env.example` → `scoring/.env`
-- Web (`web/`): `npm run dev`, `npm run build`, `npm run lint`
+- Web (`web/`): `npm run dev`, `npm run build`, `npm run lint`, `npm test` (Vitest), `npm run test:e2e` (Playwright; needs the local Supabase stack)
+- Database tests (repo root): `npx supabase test db` (pgTAP files in `supabase/tests/`). Every RLS policy gets one
 - Scoring (`scoring/`), using the venv at `scoring/.venv`:
   - Install: `.venv/Scripts/python -m pip install -e ".[dev]"`
   - Test: `.venv/Scripts/python -m pytest`
